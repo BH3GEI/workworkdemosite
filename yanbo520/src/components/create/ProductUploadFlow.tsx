@@ -2,16 +2,19 @@
 
 import { useState } from 'react'
 import { FileUploadStep } from './FileUploadStep'
-import { AIGenerationStep } from './AIGenerationStep'
-import { PreviewStep } from './PreviewStep'
 import { PublishStep } from './PublishStep'
+import { ResultsStep } from './ResultsStep'
 
 export type UploadData = {
   uploadType: 'readme' | 'zip' | 'github' | 'video' | null
   files: File[]
   githubUrl: string
   videoUrl: string
+  zipUrl: string // Add zipUrl for Project Landing Page
   readmeContent: string
+  difyFileId?: string // Add Dify file ID to track uploaded README
+  isUploading: boolean // Add upload progress state
+  uploadProgress: number // Add upload progress percentage
 }
 
 export type AIGeneratedContent = {
@@ -29,7 +32,7 @@ export type AIGeneratedContent = {
 }
 
 export type ProductData = UploadData & {
-  aiContent: AIGeneratedContent | null
+  aiContent: null // Removed AI content as it's no longer used
   isGenerating: boolean
 }
 
@@ -40,10 +43,16 @@ export function ProductUploadFlow() {
     files: [],
     githubUrl: '',
     videoUrl: '',
+    zipUrl: '',
     readmeContent: '',
+    difyFileId: undefined,
+    isUploading: false,
+    uploadProgress: 0,
     aiContent: null,
     isGenerating: false
   })
+  
+  const [workflowResult, setWorkflowResult] = useState<any>(null) // TODO: Define proper type for workflow result
 
   const updateProductData = (updates: Partial<ProductData>) => {
     setProductData(prev => ({ ...prev, ...updates }))
@@ -59,9 +68,8 @@ export function ProductUploadFlow() {
 
   const steps = [
     { number: 1, title: 'Upload Content', description: 'Select your project files or links' },
-    { number: 2, title: 'AI Generation', description: 'Generate product content with AI' },
-    { number: 3, title: 'Preview & Edit', description: 'Review and customize your product' },
-    { number: 4, title: 'Publish', description: 'Confirm and publish to platform' }
+    { number: 2, title: 'Publish', description: 'Confirm and publish to platform' },
+    { number: 3, title: 'Results', description: 'View your published product' }
   ]
 
   return (
@@ -110,27 +118,36 @@ export function ProductUploadFlow() {
         )}
         
         {currentStep === 2 && (
-          <AIGenerationStep 
-            data={productData}
-            onUpdate={updateProductData}
-            onNext={nextStep}
-            onPrev={prevStep}
-          />
-        )}
-        
-        {currentStep === 3 && (
-          <PreviewStep 
-            data={productData}
-            onUpdate={updateProductData}
-            onNext={nextStep}
-            onPrev={prevStep}
-          />
-        )}
-        
-        {currentStep === 4 && (
           <PublishStep 
             data={productData}
             onPrev={prevStep}
+            onNext={nextStep}
+            onWorkflowComplete={setWorkflowResult}
+          />
+        )}
+        
+        {currentStep === 3 && workflowResult && (
+          <ResultsStep 
+            data={productData}
+            workflowResult={workflowResult}
+            onRestart={() => {
+              // Reset all state to start over
+              setProductData({
+                uploadType: null,
+                files: [],
+                githubUrl: '',
+                videoUrl: '',
+                zipUrl: '',
+                readmeContent: '',
+                difyFileId: undefined,
+                isUploading: false,
+                uploadProgress: 0,
+                aiContent: null,
+                isGenerating: false
+              })
+              setWorkflowResult(null)
+              setCurrentStep(1)
+            }}
           />
         )}
       </div>
